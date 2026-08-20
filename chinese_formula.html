@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能中药方剂解析器</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap');
+
+  :root {
+    --linen: #f5f0e8;
+    --linen-dark: #e8e0d0;
+    --brown: #8b6914;
+    --brown-light: #a67c2e;
+    --brown-dark: #6b4f10;
+    --gray-dark: #3a3a3a;
+    --gray-mid: #6b6b6b;
+    --gray-light: #9a9a9a;
+    --ink: #2c2418;
+    --paper: #faf7f0;
+    --accent: #c0392b;
+    --accent-soft: #e74c3c;
+    --shadow: rgba(44, 36, 24, 0.1);
+    --shadow-md: rgba(44, 36, 24, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    background: var(--linen);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(139,105,20,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139,105,20,0.03) 0%, transparent 50%);
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--ink) 0%, #4a3f2f 100%);
+    color: var(--linen);
+    padding: 32px 24px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.5;
+  }
+  .header h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .header h1::before { content: '☯ '; font-size: 22px; }
+  .header h1::after { content: ' ☯'; font-size: 22px; }
+  .header .subtitle {
+    font-size: 13px;
+    color: rgba(245,240,232,0.6);
+    letter-spacing: 3px;
+    position: relative;
+  }
+
+  /* Container */
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 24px 16px 60px;
+  }
+
+  /* Input Section */
+  .input-section {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 16px var(--shadow);
+    border: 1px solid var(--linen-dark);
+  }
+  .section-label {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--brown-dark);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 16px;
+    background: var(--brown);
+    border-radius: 2px;
+  }
+  .input-hint {
+    font-size: 12px;
+    color: var(--gray-light);
+    margin-bottom: 10px;
+    padding-left: 12px;
+  }
+  textarea {
+    width: 100%;
+    height: 130px;
+    border: 2px solid var(--linen-dark);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--ink);
+    background: var(--linen);
+    resize: vertical;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    line-height: 1.8;
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--brown-light);
+    box-shadow: 0 0 0 3px rgba(139,105,20,0.1);
+  }
+  textarea::placeholder { color: var(--gray-light); }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .btn {
+    flex: 1;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Noto Sans SC', sans-serif;
+    letter-spacing: 1px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--brown) 0%, var(--brown-dark) 100%);
+    color: var(--linen);
+    box-shadow: 0 4px 12px rgba(139,105,20,0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139,105,20,0.4);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: var(--linen);
+    color: var(--gray-mid);
+    border: 2px solid var(--linen-dark);
+  }
+  .btn-secondary:hover {
+    border-color: var(--brown-light);
+    color: var(--brown-dark);
+  }
+
+  /* Parsed Results */
+  .parsed-section {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 16px var(--shadow);
+    border: 1px solid var(--linen-dark);
+    display: none;
+  }
+  .parsed-section.show { display: block; }
+
+  .herb-list {
+    display: grid;
+    gap: 8px;
+  }
+  .herb-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--linen);
+    border-radius: 10px;
+    border: 1px solid var(--linen-dark);
+    transition: all 0.2s;
+  }
+  .herb-item:hover {
+    border-color: var(--brown-light);
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .herb-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .herb-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--gray-mid);
+  }
+  .herb-dosage {
+    background: var(--brown);
+    color: var(--linen);
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .herb-nature {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .nature-warm { background: #fef3c7; color: #92400e; }
+  .nature-hot { background: #fee2e2; color: #991b1b; }
+  .nature-cold { background: #dbeafe; color: #1e40af; }
+  .nature-cool { background: #d1fae5; color: #065f46; }
+  .nature-neutral { background: #f3f4f6; color: #4b5563; }
+
+  /* Analysis Result */
+  .result-section {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 16px var(--shadow);
+    border: 1px solid var(--linen-dark);
+    display: none;
+    animation: fadeIn 0.5s ease;
+  }
+  .result-section.show { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .formula-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--linen-dark);
+  }
+  .formula-name {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+  }
+  .formula-name::before, .formula-name::after {
+    content: '——';
+    font-size: 16px;
+    color: var(--brown-light);
+    margin: 0 8px;
+  }
+  .formula-efficacy {
+    font-size: 14px;
+    color: var(--brown-dark);
+    background: rgba(139,105,20,0.08);
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  .result-body {
+    display: grid;
+    gap: 16px;
+  }
+  .result-card {
+    background: var(--linen);
+    border-radius: 12px;
+    padding: 18px 20px;
+    border-left: 4px solid var(--brown);
+  }
+  .result-card-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brown-dark);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-card-title .icon {
+    width: 24px;
+    height: 24px;
+    background: var(--brown);
+    color: var(--linen);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .result-card p {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--gray-dark);
+    padding-left: 32px;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 12px;
+    color: var(--gray-light);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray-light);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .header h1 { font-size: 22px; letter-spacing: 4px; }
+    .container { padding: 16px 12px 40px; }
+    .input-section, .parsed-section, .result-section { padding: 18px; }
+    .formula-name { font-size: 22px; }
+    .formula-name::before, .formula-name::after { display: none; }
+    .btn { padding: 12px 16px; font-size: 14px; }
+    .herb-item { padding: 10px 12px; }
+    .herb-name { font-size: 15px; }
+    .result-card p { padding-left: 0; }
+  }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(245,240,232,0.4);
+    border-top-color: var(--linen);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>智能中药方剂解析器</h1>
+  <div class="subtitle">基于中药学理论 · 君臣佐使 · 性味归经</div>
+</div>
+
+<div class="container">
+  <!-- Input -->
+  <div class="input-section">
+    <div class="section-label">方剂输入</div>
+    <div class="input-hint">请输入药材名称及剂量，支持批量粘贴，格式如：黄芪 15g，当归 10g，白术 12g</div>
+    <textarea id="inputText" placeholder="例如：黄芪 15g，当归 10g，白术 12g，茯苓 15g，甘草 6g，川芎 10g，赤芍 12g"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="analyzeFormula()">解析方剂</button>
+      <button class="btn btn-secondary" onclick="clearAll()">清空</button>
+    </div>
+  </div>
+
+  <!-- Parsed Herbs -->
+  <div class="parsed-section" id="parsedSection">
+    <div class="section-label">药材清单</div>
+    <div class="herb-list" id="herbList"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-section" id="resultSection">
+    <div class="formula-header">
+      <div class="formula-name" id="formulaName"></div>
+      <div class="formula-efficacy" id="formulaEfficacy"></div>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+  </div>
+
+  <div class="footer">
+    本工具仅供学习参考，不构成医疗建议。用药请遵医嘱。
+  </div>
+</div>
+
+<script>
+// ==================== 中药数据库 ====================
+const HERB_DB = {
+  // 补气药
+  '黄芪': { nature: '微温', flavor: '甘', meridians: ['肺','脾'],功效: '补气升阳，固表止汗，利水消肿，托毒生肌', group: '补气' },
+  '人参': { nature: '微温', flavor: '甘微苦', meridians: ['脾','肺','心'],功效: '大补元气，复脉固脱，补脾益肺，生津安神', group: '补气' },
+  '党参': { nature: '平', flavor: '甘', meridians: ['脾','肺'],功效: '补中益气，健脾益肺，养血生津', group: '补气' },
+  '白术': { nature: '温', flavor: '苦甘', meridians: ['脾','胃'],功效: '健脾益气，燥湿利水，止汗安胎', group: '补气' },
+  '山药': { nature: '平', flavor: '甘', meridians: ['脾','肺','肾'],功效: '补脾养胃，生津益肺，补肾涩精', group: '补气' },
+  '甘草': { nature: '平', flavor: '甘', meridians: ['心','肺','脾','胃'],功效: '补脾益气，清热解毒，祛痰止咳，调和诸药', group: '补气' },
+  '太子参': { nature: '平', flavor: '甘微苦', meridians: ['脾','肺'],功效: '益气健脾，生津润肺', group: '补气' },
+  '西洋参': { nature: '凉', flavor: '甘微苦', meridians: ['心','肺','肾'],功效: '补气养阴，清热生津', group: '补气' },
+  '灵芝': { nature: '平', flavor: '甘', meridians: ['心','肺','肝','肾'],功效: '补气安神，止咳平喘', group: '补气' },
+  '黄精': { nature: '平', flavor: '甘', meridians: ['脾','肺','肾'],功效: '补气养阴，健脾润肺，益肾填精', group: '补气' },
+  '大枣': { nature: '温', flavor: '甘', meridians: ['脾','胃'],功效: '补中益气，养血安神', group: '补气' },
+  '刺五加': { nature: '温', flavor: '辛苦', meridians: ['脾','肺','肾','心'],功效: '补气健脾，益肾安神', group: '补气' },
+  // 补血药
+  '当归': { nature: '温', flavor: '甘辛', meridians: ['肝','脾','心'],功效: '补血活血，调经止痛，润肠通便', group: '补血' },
+  '熟地黄': { nature: '微温', flavor: '甘', meridians: ['肝','肾'],功效: '补血滋阴，益精填髓', group: '补血' },
+  '生地黄': { nature: '寒', flavor: '甘苦', meridians: ['心','肝','肾'],功效: '清热凉血，养阴生津', group: '补血' },
+  '白芍': { nature: '微寒', flavor: '苦酸', meridians: ['肝','脾'],功效: '养血敛阴，柔肝止痛，平抑肝阳', group: '补血' },
+  '阿胶': { nature: '平', flavor: '甘', meridians: ['肺','肝','肾'],功效: '补血滋阴，润燥止血', group: '补血' },
+  '何首乌': { nature: '微温', flavor: '苦涩', meridians: ['肝','肾'],功效: '补益精血，乌须黑发，解毒消痈', group: '补血' },
+  '龙眼肉': { nature: '温', flavor: '甘', meridians: ['心','脾'],功效: '补益心脾，养血安神', group: '补血' },
+  '枸杞子': { nature: '平', flavor: '甘', meridians: ['肝','肾'],功效: '滋补肝肾，益精明目', group: '补血' },
+  '墨旱莲': { nature: '寒', flavor: '酸寒', meridians: ['肝','肾'],功效: '滋补肝肾，凉血止血', group: '补血' },
+  '桑葚': { nature: '寒', flavor: '甘酸', meridians: ['心','肝','肾'],功效: '滋阴补血，生津润燥', group: '补血' },
+  // 补阳药
+  '淫羊藿': { nature: '温', flavor: '辛苦', meridians: ['肝','肾'],功效: '补肾壮阳，强筋健骨，祛风除湿', group: '补阳' },
+  '肉苁蓉': { nature: '温', flavor: '甘咸', meridians: ['肾','大肠'],功效: '补肾阳，益精血，润肠通便', group: '补阳' },
+  '巴戟天': { nature: '微温', flavor: '甘辛', meridians: ['肾','肝'],功效: '补肾阳，强筋骨，祛风湿', group: '补阳' },
+  '杜仲': { nature: '温', flavor: '甘', meridians: ['肝','肾'],功效: '补肝肾，强筋骨，安胎', group: '补阳' },
+  '续断': { nature: '微温', flavor: '苦辛', meridians: ['肝','肾'],功效: '补肝肾，强筋骨，续折伤，止崩漏', group: '补阳' },
+  '菟丝子': { nature: '平', flavor: '辛甘', meridians: ['肝','肾','脾'],功效: '补益肝肾，固精缩尿，安胎，明目', group: '补阳' },
+  '覆盆子': { nature: '温', flavor: '酸甘', meridians: ['肾','膀胱'],功效: '固精缩尿，滋补肝肾，明目', group: '补阳' },
+  '鹿茸': { nature: '温', flavor: '咸温', meridians: ['肾','肝'],功效: '补肾阳，益精血，强筋骨', group: '补阳' },
+  '蛤蚧': { nature: '平', flavor: '咸', meridians: ['肺','肾'],功效: '补肺益肾，纳气定喘，助阳益精', group: '补阳' },
+  '核桃仁': { nature: '温', flavor: '甘', meridians: ['肾','肺','大肠'],功效: '补肾温肺，润肠通便', group: '补阳' },
+  // 清热药
+  '金银花': { nature: '寒', flavor: '甘', meridians: ['肺','胃'],功效: '清热解毒，疏散风热', group: '清热' },
+  '连翘': { nature: '微寒', flavor: '苦', meridians: ['肺','心','小肠'],功效: '清热解毒，消肿散结，疏散风热', group: '清热' },
+  '黄连': { nature: '寒', flavor: '苦', meridians: ['心','脾','胃','肝','胆','大肠'],功效: '清热燥湿，泻火解毒', group: '清热' },
+  '黄芩': { nature: '寒', flavor: '苦', meridians: ['肺','胆','脾','大肠','小肠'],功效: '清热燥湿，泻火解毒，止血安胎', group: '清热' },
+  '栀子': { nature: '寒', flavor: '苦', meridians: ['心','肺','三焦'],功效: '泻火除烦，清热利湿，凉血解毒', group: '清热' },
+  '石膏': { nature: '大寒', flavor: '辛甘', meridians: ['肺','胃'],功效: '清热泻火，除烦止渴，收敛生肌', group: '清热' },
+  '知母': { nature: '寒', flavor: '苦甘', meridians: ['肺','胃','肾'],功效: '清热泻火，滋阴润燥', group: '清热' },
+  '板蓝根': { nature: '寒', flavor: '苦', meridians: ['心','胃'],功效: '清热解毒，凉血利咽', group: '清热' },
+  '蒲公英': { nature: '寒', flavor: '苦甘', meridians: ['肝','胃'],功效: '清热解毒，消肿散结，利湿通淋', group: '清热' },
+  '紫花地丁': { nature: '寒', flavor: '苦辛', meridians: ['肝','胃'],功效: '清热解毒，凉血消肿', group: '清热' },
+  '野菊花': { nature: '微寒', flavor: '苦辛', meridians: ['肝'],功效: '清热解毒，平肝明目', group: '清热' },
+  '牛黄': { nature: '凉', flavor: '甘', meridians: ['心','肝'],功效: '牛黄清热解毒，化痰开窍，凉肝息风', group: '清热' },
+  '穿心莲': { nature: '寒', flavor: '苦', meridians: ['心','肺','胃','大肠'],功效: '清热解毒，凉血消肿', group: '清热' },
+  '大青叶': { nature: '寒', flavor: '苦', meridians: ['心','胃'],功效: '清热解毒，凉血消斑', group: '清热' },
+  '青黛': { nature: '寒', flavor: '咸苦', meridians: ['肝'],功效: '清热解毒，凉血消斑，清肝泻火', group: '清热' },
+  '龙胆草': { nature: '寒', flavor: '苦', meridians: ['肝','胆'],功效: '清热燥湿，泻肝胆火', group: '清热' },
+  '秦皮': { nature: '寒', flavor: '苦涩', meridians: ['肝','胆','大肠'],功效: '清热燥湿，收涩止痢，清肝明目', group: '清热' },
+  '白鲜皮': { nature: '寒', flavor: '苦', meridians: ['脾','胃'],功效: '清热燥湿，祛风解毒', group: '清热' },
+  '苦参': { nature: '寒', flavor: '苦', meridians: ['心','肝','胃','大肠','膀胱'],功效: '清热燥湿，杀虫利尿', group: '清热' },
+  '土茯苓': { nature: '平', flavor: '甘淡', meridians: ['肝','胃'],功效: '解毒除湿，通利关节', group: '清热' },
+  '白花蛇舌草': { nature: '微寒', flavor: '苦甘', meridians: ['胃','大肠','肝'],功效: '清热解毒，利湿通淋', group: '清热' },
+  '半枝莲': { nature: '寒', flavor: '辛苦', meridians: ['肺','肝','肾'],功效: '清热解毒，化瘀利尿', group: '清热' },
+  '鱼腥草': { nature: '微寒', flavor: '辛', meridians: ['肺'],功效: '清热解毒，消痈排脓，利尿通淋', group: '清热' },
+  '金荞麦': { nature: '微苦涩微寒', flavor: '辛苦', meridians: ['肺'],功效: '清热解毒，排脓祛瘀', group: '清热' },
+  '罗汉果': { nature: '凉', flavor: '甘', meridians: ['肺','大肠'],功效: '清热润肺，利咽开音，润肠通便', group: '清热' },
+  '胖大海': { nature: '凉', flavor: '甘', meridians: ['肺','大肠'],功效: '清热润肺，利咽开音，润肠通便', group: '清热' },
+  '射干': { nature: '寒', flavor: '苦', meridians: ['肺'],功效: '清热解毒，消痰利咽', group: '清热' },
+  '山豆根': { nature: '寒', flavor: '苦', meridians: ['肺','胃'],功效: '清热解毒，消肿利咽', group: '清热' },
+  '马勃': { nature: '平', flavor: '辛', meridians: ['肺'],功效: '清热解毒，利咽止血', group: '清热' },
+  '冰片': { nature: '凉', flavor: '辛苦', meridians: ['心','脾','肺'],功效: '开窍醒神，清热止痛', group: '清热' },
+  '青蒿': { nature: '寒', flavor: '苦辛', meridians: ['肝','胆'],功效: '清虚热，除骨蒸，解暑热，截疟', group: '清热' },
+  '地骨皮': { nature: '寒', flavor: '甘', meridians: ['肺','肝','肾'],功效: '凉血除蒸，清肺降火', group: '清热' },
+  '银柴胡': { nature: '微寒', flavor: '甘', meridians: ['肝'],功效: '清虚热，除疳热', group: '清热' },
+  '白薇': { nature: '寒', flavor: '苦咸', meridians: ['胃','肝','肾'],功效: '清热凉血，利尿通淋，解毒疗疮', group: '清热' },
+  '胡黄连': { nature: '寒', flavor: '苦', meridians: ['肝','胃','大肠'],功效: '清虚热，除疳热，清热燥湿', group: '清热' },
+  '绵马贯众': { nature: '微寒', flavor: '苦', meridians: ['肝','脾'],功效: '清热解毒，杀虫，止血', group: '清热' },
+  // 泻下药
+  '大黄': { nature: '寒', flavor: '苦', meridians: ['脾','胃','大肠','肝','心包'],功效: '泻下攻积，清热泻火，凉血解毒，逐瘀通经', group: '泻下' },
+  '芒硝': { nature: '寒', flavor: '辛苦咸', meridians: ['胃','大肠'],功效: '泻下通便，润燥软坚，清热消肿', group: '泻下' },
+  '番泻叶': { nature: '寒', flavor: '甘苦', meridians: ['大肠'],功效: '泻热行滞，通便，利水', group: '泻下' },
+  '芦荟': { nature: '寒', flavor: '苦', meridians: ['肝','大肠'],功效: '泻下通便，清肝杀虫', group: '泻下' },
+  '巴豆': { nature: '热', flavor: '辛', meridians: ['胃','大肠','肝'],功效: '峻下冷积，逐水退肿，祛痰利咽，蚀疮', group: '泻下' },
+  // 理气药
+  '陈皮': { nature: '温', flavor: '辛苦', meridians: ['脾','肺'],功效: '理气健脾，燥湿化痰', group: '理气' },
+  '枳实': { nature: '微寒', flavor: '辛苦', meridians: ['脾','胃'],功效: '破气消积，化痰散痞', group: '理气' },
+  '枳壳': { nature: '微寒', flavor: '辛苦', meridians: ['脾','胃'],功效: '理气宽中，行滞消胀', group: '理气' },
+  '香附': { nature: '平', flavor: '辛苦', meridians: ['肝','三焦'],功效: '疏肝解郁，理气宽中，调经止痛', group: '理气' },
+  '柴胡': { nature: '微寒', flavor: '辛苦', meridians: ['肝','胆','肺'],功效: '疏散退热，疏肝解郁，升举阳气', group: '理气' },
+  '川楝子': { nature: '寒', flavor: '苦', meridians: ['肝','小肠','膀胱'],功效: '疏肝泄热，行气止痛，杀虫', group: '理气' },
+  '青皮': { nature: '温', flavor: '辛苦', meridians: ['肝','胆','胃'],功效: '疏肝破气，消积化滞', group: '理气' },
+  '木香': { nature: '温', flavor: '辛苦', meridians: ['脾','胃','大肠','胆','三焦'],功效: '行气止痛，健脾消食', group: '理气' },
+  '沉香': { nature: '温', flavor: '辛苦', meridians: ['脾','胃','肾'],功效: '行气止痛，温中止呕，纳气平喘', group: '理气' },
+  '檀香': { nature: '温', flavor: '辛', meridians: ['脾','胃','心','肺'],功效: '行气止痛，散寒调中', group: '理气' },
+  '薤白': { nature: '温', flavor: '辛苦', meridians: ['肺','胃','大肠'],功效: '通阳散结，行气导滞', group: '理气' },
+  '柿蒂': { nature: '平', flavor: '苦辛', meridians: ['胃'],功效: '降逆下气', group: '理气' },
+  '大腹皮': { nature: '微温', flavor: '辛', meridians: ['脾','胃','大肠','小肠'],功效: '行气宽中，利水消肿', group: '理气' },
+  '乌药': { nature: '温', flavor: '辛', meridians: ['肺','脾','肾','膀胱'],功效: '行气止痛，温肾散寒', group: '理气' },
+  '延胡索': { nature: '温', flavor: '辛苦', meridians: ['肺','脾','肝','心'],功效: '活血行气止痛', group: '活血' },
+  '佛手': { nature: '温', flavor: '辛苦酸', meridians: ['肝','脾','胃','肺'],功效: '疏肝解郁，理气和中，燥湿化痰', group: '理气' },
+  '香橼': { nature: '温', flavor: '辛苦酸', meridians: ['肝','脾','肺'],功效: '疏肝理气，宽中化痰', group: '理气' },
+  '绿萼梅': { nature: '平', flavor: '甘微苦', meridians: ['肝','脾','胃'],功效: '疏肝解郁，和中化痰', group: '理气' },
+  '玫瑰花': { nature: '温', flavor: '甘微苦', meridians: ['肝','脾'],功效: '行气解郁，和血止痛', group: '理气' },
+  '九香虫': { nature: '温', flavor: '咸', meridians: ['肝','脾','肾'],功效: '理气止痛，温补肾阳', group: '理气' },
+  '刀豆': { nature: '温', flavor: '甘', meridians: ['胃','肾'],功效: '温中下气，益肾补阳', group: '理气' },
+  // 活血化瘀药
+  '丹参': { nature: '微寒', flavor: '苦', meridians: ['心','心包','肝'],功效: '活血祛瘀，通经止痛，清心除烦，凉血消痈', group: '活血' },
+  '川芎': { nature: '温', flavor: '辛', meridians: ['肝','胆','心包'],功效: '活血行气，祛风止痛', group: '活血' },
+  '桃仁': { nature: '平', flavor: '苦甘', meridians: ['心','肝','大肠'],功效: '活血祛瘀，润肠通便，止咳平喘', group: '活血' },
+  '红花': { nature: '温', flavor: '辛', meridians: ['心','肝'],功效: '活血通经，散瘀止痛', group: '活血' },
+  '益母草': { nature: '微寒', flavor: '辛苦', meridians: ['肝','心','膀胱'],功效: '活血调经，利尿消肿，清热解毒', group: '活血' },
+  '牛膝': { nature: '平', flavor: '苦甘酸', meridians: ['肝','肾'],功效: '活血通经，补肝肾，强筋骨，利水通淋，引火下行', group: '活血' },
+  '鸡血藤': { nature: '温', flavor: '苦甘', meridians: ['肝','肾'],功效: '活血补血，调经止痛，舒筋活络', group: '活血' },
+  '三棱': { nature: '平', flavor: '辛苦', meridians: ['肝','脾'],功效: '破血行气，消积止痛', group: '活血' },
+  '莪术': { nature: '温', flavor: '辛苦', meridians: ['肝','脾'],功效: '破血行气，消积止痛', group: '活血' },
+  '乳香': { nature: '温', flavor: '辛苦', meridians: ['心','肝','脾'],功效: '活血行气止痛，消肿生肌', group: '活血' },
+  '没药': { nature: '平', flavor: '辛苦', meridians: ['心','肝','脾'],功效: '散瘀定痛，消肿生肌', group: '活血' },
+  '五灵脂': { nature: '温', flavor: '苦甘', meridians: ['肝'],功效: '活血止痛，化瘀止血', group: '活血' },
+  '血竭': { nature: '平', flavor: '甘咸', meridians: ['心','肝'],功效: '活血定痛，化瘀止血，生肌敛疮', group: '活血' },
+  '自然铜': { nature: '平', flavor: '辛', meridians: ['肝'],功效: '散瘀止痛，接骨疗伤', group: '活血' },
+  '苏木': { nature: '平', flavor: '甘咸', meridians: ['心','肝','脾'],功效: '活血祛瘀，消肿止痛', group: '活血' },
+  '䗪虫': { nature: '寒', flavor: '咸', meridians: ['肝'],功效: '破血逐瘀，续筋接骨', group: '活血' },
+  '水蛭': { nature: '平', flavor: '苦咸', meridians: ['肝'],功效: '破血逐瘀通经', group: '活血' },
+  '虻虫': { nature: '寒', flavor: '苦', meridians: ['肝'],功效: '破血逐瘀，消癥散癥', group: '活血' },
+  '穿山甲': { nature: '微寒', flavor: '咸', meridians: ['肝','胃'],功效: '活血消癥，通经下乳，消肿排脓', group: '活血' },
+  '王不留行': { nature: '平', flavor: '苦', meridians: ['肝','胃'],功效: '活血通经，下乳消肿，利尿通淋', group: '活血' },
+  '冬葵子': { nature: '凉', flavor: '甘', meridians: ['大肠','小肠','膀胱'],功效: '利尿通淋，下乳润肠', group: '活血' },
+  '郁金': { nature: '寒', flavor: '辛苦', meridians: ['肝','心','肺'],功效: '活血止痛，行气解郁，清心凉血，利胆退黄', group: '活血' },
+  '姜黄': { nature: '温', flavor: '辛苦', meridians: ['脾','肝'],功效: '破血行气，通经止痛', group: '活血' },
+  '三七': { nature: '温', flavor: '甘微苦', meridians: ['肝','胃'],功效: '散瘀止血，消肿定痛', group: '活血' },
+  '蒲黄': { nature: '平', flavor: '甘', meridians: ['肝','心包'],功效: '止血，化瘀，通淋', group: '活血' },
+  '茜草': { nature: '寒', flavor: '苦', meridians: ['肝'],功效: '凉血化瘀止血，通经', group: '活血' },
+  '槐花': { nature: '微寒', flavor: '苦', meridians: ['肝','大肠'],功效: '凉血止血，清肝泻火', group: '活血' },
+  '地榆': { nature: '微寒', flavor: '苦酸涩', meridians: ['肝','大肠'],功效: '凉血止血，解毒敛疮', group: '活血' },
+  '侧柏叶': { nature: '寒', flavor: '苦涩', meridians: ['肺','肝','脾'],功效: '凉血止血，化痰止咳，生发乌发', group: '活血' },
+  '白及': { nature: '微寒', flavor: '苦甘涩', meridians: ['肺','肝','胃'],功效: '收敛止血，消肿生肌', group: '活血' },
+  '仙鹤草': { nature: '平', flavor: '苦涩', meridians: ['肺','肝','脾'],功效: '收敛止血，截疟，止痢，解毒', group: '活血' },
+  '棕榈炭': { nature: '平', flavor: '苦涩', meridians: ['肝','肺','大肠'],功效: '收敛止血', group: '活血' },
+  '藕节': { nature: '平', flavor: '甘涩', meridians: ['肝','肺','胃'],功效: '收敛止血，化瘀', group: '活血' },
+  '花蕊石': { nature: '平', flavor: '酸涩', meridians: ['肝'],功效: '收敛止血，化瘀', group: '活血' },
+  '血余炭': { nature: '平', flavor: '苦', meridians: ['肝','膀胱'],功效: '收敛止血，化瘀利尿', group: '活血' },
+  '降香': { nature: '温', flavor: '辛', meridians: ['肝','脾'],功效: '化瘀止血，理气止痛', group: '活血' },
+  // 利水渗湿药
+  '茯苓': { nature: '平', flavor: '甘淡', meridians: ['心','肺','脾','肾'],功效: '利水渗湿，健脾宁心', group: '利水' },
+  '猪苓': { nature: '平', flavor: '甘淡', meridians: ['肾','膀胱'],功效: '利水渗湿', group: '利水' },
+  '泽泻': { nature: '寒', flavor: '甘淡', meridians: ['肾','膀胱'],功效: '利水渗湿，泄热，化浊降脂', group: '利水' },
+  '薏苡仁': { nature: '微寒', flavor: '甘淡', meridians: ['脾','肺','肾'],功效: '利水渗湿，健脾止泻，除痹，排脓', group: '利水' },
+  '车前子': { nature: '寒', flavor: '甘', meridians: ['肝','肾','肺','小肠'],功效: '清热利尿通淋，渗湿止泻，明目，祛痰', group: '利水' },
+  '滑石': { nature: '寒', flavor: '甘淡', meridians: ['胃','膀胱'],功效: '利尿通淋，清热解暑，收湿敛疮', group: '利水' },
+  '木通': { nature: '寒', flavor: '苦', meridians: ['心','小肠','膀胱'],功效: '利尿通淋，清心火，通经下乳', group: '利水' },
+  '通草': { nature: '微寒', flavor: '甘淡', meridians: ['肺','胃'],功效: '清热利尿，通气下乳', group: '利水' },
+  '玉米须': { nature: '平', flavor: '甘', meridians: ['肝','胆','膀胱'],功效: '利尿消肿，平肝利胆', group: '利水' },
+  '葫芦': { nature: '温', flavor: '甘', meridians: ['肺','肾','大肠'],功效: '利尿消肿', group: '利水' },
+  '香加皮': { nature: '温', flavor: '辛苦', meridians: ['心','肺','肾','肝'],功效: '利水消肿，祛风湿，强筋骨', group: '利水' },
+  '冬瓜皮': { nature: '凉', flavor: '甘', meridians: ['肺','小肠'],功效: '利尿消肿', group: '利水' },
+  '西瓜翠衣': { nature: '凉', flavor: '甘', meridians: ['胃','膀胱'],功效: '清热解暑，利尿', group: '利水' },
+  '蝼蛄': { nature: '寒', flavor: '咸', meridians: ['肺','大肠'],功效: '利尿通淋，消肿散结', group: '利水' },
+  '泽漆': { nature: '微寒', flavor: '辛苦', meridians: ['肺','小肠','大肠'],功效: '利水消肿，化痰散结，止咳平喘', group: '利水' },
+  '附子': { nature: '大热', flavor: '辛苦', meridians: ['心','肾','脾'],功效: '回阳救逆，补火助阳，散寒止痛', group: '温里' },
+  '干姜': { nature: '热', flavor: '辛', meridians: ['脾','胃','肾','心','肺'],功效: '温中散寒，回阳通脉，温肺化饮', group: '温里' },
+  '肉桂': { nature: '大热', flavor: '辛甘', meridians: ['肾','脾','心','肝'],功效: '补火助阳，散寒止痛，温通经脉', group: '温里' },
+  '吴茱萸': { nature: '热', flavor: '辛苦', meridians: ['肝','脾','胃','肾'],功效: '散寒止痛，降逆止呕，助阳止泻', group: '温里' },
+  '小茴香': { nature: '温', flavor: '辛', meridians: ['肝','肾','脾','胃'],功效: '散寒止痛，理气和胃', group: '温里' },
+  '花椒': { nature: '温', flavor: '辛', meridians: ['脾','胃','肾'],功效: '温中止痛，杀虫止痒', group: '温里' },
+  '胡椒': { nature: '热', flavor: '辛', meridians: ['胃','大肠'],功效: '温中散寒，下气消痰', group: '温里' },
+  '高良姜': { nature: '热', flavor: '辛', meridians: ['脾','胃'],功效: '温胃止呕，散寒止痛', group: '温里' },
+  '丁香': { nature: '温', flavor: '辛', meridians: ['脾','胃','肾'],功效: '温中降逆，散寒止痛，温肾助阳', group: '温里' },
+  '良姜': { nature: '热', flavor: '辛', meridians: ['脾','胃'],功效: '温胃散寒，行气止痛', group: '温里' },
+  // 解表药
+  '麻黄': { nature: '温', flavor: '辛苦', meridians: ['肺','膀胱'],功效: '发汗解表，宣肺平喘，利水消肿', group: '解表' },
+  '桂枝': { nature: '温', flavor: '辛甘', meridians: ['肺','膀胱','心'],功效: '发汗解肌，温通经脉，助阳化气', group: '解表' },
+  '紫苏': { nature: '温', flavor: '辛', meridians: ['肺','脾'],功效: '解表散寒，行气宽中，解鱼蟹毒', group: '解表' },
+  '生姜': { nature: '温', flavor: '辛', meridians: ['肺','脾','胃'],功效: '解表散寒，温中止呕，温肺止咳', group: '解表' },
+  '香薷': { nature: '温', flavor: '辛', meridians: ['肺','脾','胃'],功效: '发汗解表，化湿和中，利水消肿', group: '解表' },
+  '荆芥': { nature: '温', flavor: '辛', meridians: ['肺','肝'],功效: '解表散风，透疹，消疮，止血', group: '解表' },
+  '防风': { nature: '微温', flavor: '辛苦', meridians: ['膀胱','肝','脾'],功效: '祛风解表，胜湿止痛，止痉', group: '解表' },
+  '羌活': { nature: '温', flavor: '辛苦', meridians: ['膀胱','肾'],功效: '解表散寒，祛风胜湿，止痛', group: '解表' },
+  '白芷': { nature: '温', flavor: '辛', meridians: ['肺','胃','大肠'],功效: '解表散寒，祛风止痛，通鼻窍，燥湿止带，消肿排脓', group: '解表' },
+  '细辛': { nature: '温', flavor: '辛', meridians: ['肺','肾','心'],功效: '解表散寒，祛风止痛，通窍，温肺化饮', group: '解表' },
+  '藁本': { nature: '温', flavor: '辛', meridians: ['膀胱'],功效: '祛风散寒，除湿止痛', group: '解表' },
+  '苍耳子': { nature: '温', flavor: '辛苦', meridians: ['肺'],功效: '祛风散寒，通鼻窍，祛风除湿', group: '解表' },
+  '辛夷': { nature: '温', flavor: '辛', meridians: ['肺','胃'],功效: '发散风寒，通鼻窍', group: '解表' },
+  '蔓荆子': { nature: '微寒', flavor: '辛苦', meridians: ['肺','肝','膀胱'],功效: '疏散风热，清利头目', group: '解表' },
+  '薄荷': { nature: '凉', flavor: '辛', meridians: ['肺','肝'],功效: '疏散风热，清利头目，利咽，透疹，疏肝行气', group: '解表' },
+  '牛蒡子': { nature: '寒', flavor: '辛苦', meridians: ['肺','胃'],功效: '疏散风热，宣肺利咽，解毒透疹', group: '解表' },
+  '蝉蜕': { nature: '凉', flavor: '甘', meridians: ['肺','肝'],功效: '疏散风热，利咽开音，透疹，明目退翳，息风止痉', group: '解表' },
+  '桑叶': { nature: '寒', flavor: '甘苦', meridians: ['肺','肝'],功效: '疏散风热，清肺润燥，清肝明目', group: '解表' },
+  '菊花': { nature: '微寒', flavor: '苦甘', meridians: ['肺','肝'],功效: '疏散风热，平抑肝阳，清肝明目，清热解毒', group: '解表' },
+  '升麻': { nature: '微寒', flavor: '辛苦', meridians: ['肺','脾','胃','大肠'],功效: '疏散风热，透疹，清热解毒，升举阳气', group: '解表' },
+  '葛根': { nature: '凉', flavor: '甘辛', meridians: ['脾','胃'],功效: '解肌退热，透疹，生津止渴，升阳止泻', group: '解表' },
+  '柽柳': { nature: '平', flavor: '辛咸', meridians: ['肺','胃','皮肤'],功效: '发汗解表，透疹祛湿', group: '解表' },
+  // 祛风湿药
+  '独活': { nature: '微温', flavor: '辛苦', meridians: ['肾','膀胱'],功效: '祛风除湿，通痹止痛', group: '祛风湿' },
+  '威灵仙': { nature: '温', flavor: '辛苦', meridians: ['胃','肠'],功效: '祛风除湿，通络止痛', group: '祛风湿' },
+  '秦艽': { nature: '微寒', flavor: '辛苦', meridians: ['胃','肝','胆'],功效: '祛风除湿，清虚热，舒筋络', group: '祛风湿' },
+  '防己': { nature: '寒', flavor: '辛苦', meridians: ['膀胱','肺'],功效: '祛风止痛，利水消肿', group: '祛风湿' },
+  '络石藤': { nature: '微寒', flavor: '苦', meridians: ['心','肝','肾'],功效: '祛风通络，凉血消肿', group: '祛风湿' },
+  '木瓜': { nature: '温', flavor: '酸', meridians: ['肝','脾'],功效: '舒筋活络，和胃化湿', group: '祛风湿' },
+  '伸筋草': { nature: '温', flavor: '辛苦', meridians: ['肝'],功效: '祛风除湿，舒筋活络', group: '祛风湿' },
+  '川乌': { nature: '热', flavor: '辛苦', meridians: ['肝','脾','肾','心'],功效: '祛风除湿，温经止痛', group: '祛风湿' },
+  '草乌': { nature: '热', flavor: '辛苦', meridians: ['肝','脾','肾','心'],功效: '祛风除湿，温经止痛', group: '祛风湿' },
+  '天南星': { nature: '温', flavor: '辛苦', meridians: ['肺','肝','脾'],功效: '燥湿化痰，祛风解痉，散结消肿', group: '祛风湿' },
+  '白附子': { nature: '温', flavor: '辛苦', meridians: ['肝','胃'],功效: '祛风痰，定惊搐，解毒散结', group: '祛风湿' },
+  '石南藤': { nature: '温', flavor: '辛苦', meridians: ['肝'],功效: '祛风除湿，活血通络', group: '祛风湿' },
+  '海棠藤': { nature: '温', flavor: '辛苦', meridians: ['肝','脾'],功效: '祛风除湿，理气止痛', group: '祛风湿' },
+  '雪莲花': { nature: '温', flavor: '甘苦', meridians: ['肝','肾','脾'],功效: '补肾阳，强筋骨，祛风湿', group: '祛风湿' },
+  '穿山龙': { nature: '微温', flavor: '苦', meridians: ['肝','肺'],功效: '祛风除湿，活血通络，止咳平喘', group: '祛风湿' },
+  '桑寄生': { nature: '平', flavor: '苦甘', meridians: ['肝','肾'],功效: '祛风除湿，补肝肾，强筋骨，安胎', group: '祛风湿' },
+  '五加皮': { nature: '温', flavor: '辛苦', meridians: ['肝','肾','脾'],功效: '祛风除湿，补肝肾，强筋骨，利水消肿', group: '祛风湿' },
+  '狗脊': { nature: '温', flavor: '苦甘', meridians: ['肝','肾'],功效: '祛风除湿，补肝肾，强腰膝', group: '祛风湿' },
+  '盐杜仲': { nature: '温', flavor: '甘', meridians: ['肝','肾'],功效: '补肝肾，强筋骨，安胎', group: '祛风湿' },
+  '盐续断': { nature: '微温', flavor: '苦辛', meridians: ['肝','肾'],功效: '补肝肾，强筋骨，续折伤', group: '祛风湿' },
+  '海风藤': { nature: '微温', flavor: '辛苦', meridians: ['肝'],功效: '祛风除湿，通络止痛', group: '祛风湿' },
+  '桑枝': { nature: '平', flavor: '苦', meridians: ['肝'],功效: '祛风湿，通经络', group: '祛风湿' },
+  '海桐皮': { nature: '温', flavor: '辛苦', meridians: ['肝'],功效: '祛风除湿，通络止痛', group: '祛风湿' },
+  '豨莶草': { nature: '寒', flavor: '苦辛', meridians: ['肝','肾'],功效: '祛风湿，利关节，解毒', group: '祛风湿' },
+  '臭梧桐': { nature: '平', flavor: '辛苦甘', meridians: ['肝'],功效: '祛风湿，通经络，平肝', group: '祛风湿' },
+  '雷公藤': { nature: '寒', flavor: '苦辛', meridians: ['肝'],功效: '祛风除湿，活血通络，消肿止痛', group: '祛风湿' },
+  '丁公藤': { nature: '温', flavor: '辛苦', meridians: ['肝','脾'],功效: '祛风除湿，消肿止痛', group: '祛风湿' },
+  '千年健': { nature: '温', flavor: '辛苦', meridians: ['肝','肾'],功效: '祛风除湿，强筋壮骨', group: '祛风湿' },
+  // 化湿药
+  '苍术': { nature: '温', flavor: '辛苦', meridians: ['脾','胃','肝'],功效: '燥湿健脾，祛风散寒，明目', group: '化湿' },
+  '厚朴': { nature: '温', flavor: '辛苦', meridians: ['脾','胃','肺','大肠'],功效: '燥湿消痰，下气除满', group: '化湿' },
+  '藿香': { nature: '微温', flavor: '辛', meridians: ['脾','胃','肺'],功效: '化湿醒脾，和中止呕，解暑发表', group: '化湿' },
+  '佩兰': { nature: '平', flavor: '辛', meridians: ['脾','胃'],功效: '化湿醒脾，解暑发表', group: '化湿' },
+  '砂仁': { nature: '温', flavor: '辛', meridians: ['脾','胃','肾'],功效: '化湿行气，温中止泻，安胎', group: '化湿' },
+  '白豆蔻': { nature: '温', flavor: '辛', meridians: ['肺','脾','胃'],功效: '化湿行气，温中止呕，开胃消食', group: '化湿' },
+  '草豆蔻': { nature: '温', flavor: '辛', meridians: ['脾','胃'],功效: '燥湿行气，温中止呕', group: '化湿' },
+  '草果': { nature: '温', flavor: '辛', meridians: ['脾','胃'],功效: '燥湿温中，截疟除痰', group: '化湿' },
+  // 消食药
+  '山楂': { nature: '微温', flavor: '酸甘', meridians: ['脾','胃','肝'],功效: '消食化积，行气散瘀', group: '消食' },
+  '神曲': { nature: '温', flavor: '辛甘', meridians: ['脾','胃'],功效: '消食和胃', group: '消食' },
+  '麦芽': { nature: '平', flavor: '甘', meridians: ['脾','胃','肝'],功效: '行气消食，健脾开胃，回乳消胀', group: '消食' },
+  '稻芽': { nature: '温', flavor: '甘', meridians: ['脾','胃'],功效: '消食和中，健脾开胃', group: '消食' },
+  '莱菔子': { nature: '平', flavor: '辛甘', meridians: ['肺','脾','胃'],功效: '消食除胀，降气化痰', group: '消食' },
+  '鸡内金': { nature: '平', flavor: '甘', meridians: ['脾','胃','小肠','膀胱'],功效: '健胃消食，涩精止遗，通淋化石', group: '消食' },
+  '谷芽': { nature: '温', flavor: '甘', meridians: ['脾','胃'],功效: '消食和中，健脾开胃', group: '消食' },
+  '建神曲': { nature: '温', flavor: '辛甘', meridians: ['脾','胃'],功效: '消食和胃', group: '消食' },
+  // 利水渗湿药
+  '车前草': { nature: '寒', flavor: '甘', meridians: ['肝','肾','肺','小肠'],功效: '利尿通淋，清热解毒，化痰止咳', group: '利水' },
+  '冬瓜仁': { nature: '微寒', flavor: '甘', meridians: ['肺','大肠'],功效: '清肺化痰，利湿排脓', group: '利水' },
+  '金钱草': { nature: '微寒', flavor: '甘酸', meridians: ['肝','胆','膀胱'],功效: '利水通淋，清热解毒，消肿散结', group: '利水' },
+  '海金沙': { nature: '寒', flavor: '甘咸', meridians: ['膀胱'],功效: '清利湿热，通淋止痛', group: '利水' },
+  '石韦': { nature: '微寒', flavor: '苦甘', meridians: ['肺','膀胱'],功效: '利尿通淋，清肺止咳，凉血止血', group: '利水' },
+  '瞿麦': { nature: '寒', flavor: '苦', meridians: ['心','小肠'],功效: '利尿通淋，活血通经', group: '利水' },
+  '萆薢': { nature: '平', flavor: '苦', meridians: ['肾','胃'],功效: '利湿去浊，祛风除痹', group: '利水' },
+  '茵陈': { nature: '微寒', flavor: '苦辛', meridians: ['脾','胃','肝','胆'],功效: '清利湿热，利胆退黄', group: '利水' },
+  '地肤子': { nature: '寒', flavor: '辛苦', meridians: ['肾','膀胱'],功效: '清热利湿，止痒', group: '利水' },
+  '沸蛇床子': { nature: '温', flavor: '辛苦', meridians: ['肾'],功效: '燥湿祛风，杀虫止痒，温肾壮阳', group: '利水' },
+  '乌梅': { nature: '平', flavor: '酸涩', meridians: ['肝','脾','肺','大肠'],功效: '敛肺止咳，涩肠止泻，安蛔止痛，生津止渴', group: '收涩' },
+  '五倍子': { nature: '寒', flavor: '酸涩', meridians: ['肺','大肠','肾'],功效: '敛肺降火，涩肠止泻，敛汗止血', group: '收涩' },
+  '诃子': { nature: '平', flavor: '苦涩', meridians: ['肺','大肠','胃'],功效: '涩肠止泻，敛肺止咳，降火利咽', group: '收涩' },
+  '石榴皮': { nature: '温', flavor: '酸涩', meridians: ['大肠','肾'],功效: '涩肠止泻，止血，驱虫', group: '收涩' },
+  '山茱萸': { nature: '微温', flavor: '酸涩', meridians: ['肝','肾'],功效: '补益肝肾，收敛固涩', group: '收涩' },
+  '桑螵蛸': { nature: '平', flavor: '甘咸', meridians: ['肝','肾'],功效: '固精缩尿，补肾助阳', group: '收涩' },
+  '金樱子': { nature: '平', flavor: '酸涩', meridians: ['肾','膀胱','大肠'],功效: '固精缩尿，涩肠止泻', group: '收涩' },
+  '芡实': { nature: '平', flavor: '甘涩', meridians: ['脾','肾'],功效: '益肾固精，补脾止泻，除湿止带', group: '收涩' },
+  '莲子': { nature: '平', flavor: '甘涩', meridians: ['脾','肾','心'],功效: '补脾止泻，益肾固精，养心安神', group: '收涩' },
+  '莲子心': { nature: '寒', flavor: '苦', meridians: ['心','肾'],功效: '清热降火，安神', group: '收涩' },
+  '莲须': { nature: '平', flavor: '甘涩', meridians: ['肾'],功效: '固肾涩精', group: '收涩' },
+  '海螵蛸': { nature: '温', flavor: '咸涩', meridians: ['脾','肾'],功效: '收敛止血，固精止带，制酸止痛，收湿敛疮', group: '收涩' },
+  '椿皮': { nature: '寒', flavor: '苦涩', meridians: ['胃','大肠','肝'],功效: '清热燥湿，收敛止带，止泻止血', group: '收涩' },
+  '鸦胆子': { nature: '寒', flavor: '苦', meridians: ['大肠','肝'],功效: '清热解毒，截疟，止痢，腐蚀赘疣', group: '收涩' },
+  '赤石脂': { nature: '温', flavor: '甘涩', meridians: ['胃','大肠'],功效: '涩肠止泻，收敛止血，生肌敛疮', group: '收涩' },
+  '禹余粮': { nature: '平', flavor: '甘涩', meridians: ['胃','大肠'],功效: '涩肠止泻，收敛止血', group: '收涩' },
+  // 安神药
+  '酸枣仁': { nature: '平', flavor: '甘酸', meridians: ['肝','胆','心'],功效: '养心益肝，安神，敛汗', group: '安神' },
+  '柏子仁': { nature: '平', flavor: '甘', meridians: ['心','肾','大肠'],功效: '养心安神，润肠通便', group: '安神' },
+  '远志': { nature: '温', flavor: '辛苦', meridians: ['心','肾','肺'],功效: '宁心安神，祛痰开窍，消散痈肿', group: '安神' },
+  '合欢皮': { nature: '平', flavor: '甘', meridians: ['心','肝'],功效: '解郁安神，活血消肿', group: '安神' },
+  '合欢花': { nature: '平', flavor: '甘', meridians: ['心','肝'],功效: '解郁安神', group: '安神' },
+  '夜交藤': { nature: '平', flavor: '甘', meridians: ['心','肝'],功效: '养血安神，祛风通络', group: '安神' },
+  '琥珀': { nature: '平', flavor: '甘', meridians: ['心','肝','膀胱'],功效: '镇惊安神，活血散瘀，利尿通淋', group: '安神' },
+  // 开窍药
+  '麝香': { nature: '温', flavor: '辛', meridians: ['心','脾'],功效: '开窍醒神，活血通经，消肿止痛', group: '开窍' },
+  '苏合香': { nature: '温', flavor: '辛', meridians: ['心','脾'],功效: '开窍醒神，辟秽止痛', group: '开窍' },
+  '石菖蒲': { nature: '温', flavor: '辛苦', meridians: ['心','胃'],功效: '开窍豁痰，醒神益智，化湿开胃', group: '开窍' },
+  '蟾酥': { nature: '温', flavor: '辛', meridians: ['心'],功效: '解毒止痛，开窍醒神', group: '开窍' },
+  // 平肝息风药
+  '石决明': { nature: '寒', flavor: '咸', meridians: ['肝'],功效: '平肝潜阳，清肝明目', group: '平肝' },
+  '珍珠母': { nature: '寒', flavor: '咸', meridians: ['肝','心'],功效: '平肝潜阳，清肝明目，镇心安神', group: '平肝' },
+  '牡蛎': { nature: '微寒', flavor: '咸涩', meridians: ['肝','肾'],功效: '重镇安神，潜阳补阴，软坚散结，收敛固涩', group: '平肝' },
+  '代赭石': { nature: '寒', flavor: '苦', meridians: ['肝','心'],功效: '平肝潜阳，重镇降逆，凉血止血', group: '平肝' },
+  '刺蒺藜': { nature: '平', flavor: '辛苦', meridians: ['肝'],功效: '平肝疏肝，祛风明目', group: '平肝' },
+  '罗布麻叶': { nature: '寒', flavor: '甘苦', meridians: ['肝'],功效: '平肝安神，清热利水', group: '平肝' },
+  '羚羊角': { nature: '寒', flavor: '咸', meridians: ['肝','心'],功效: '平肝息风，清肝明目，清热解毒', group: '平肝' },
+  '钩藤': { nature: '凉', flavor: '甘', meridians: ['肝','心包'],功效: '清热平肝，息风定惊', group: '平肝' },
+  '天麻': { nature: '平', flavor: '甘', meridians: ['肝'],功效: '息风止痉，平抑肝阳，祛风通络', group: '平肝' },
+  '地龙': { nature: '寒', flavor: '咸', meridians: ['肝','脾','膀胱'],功效: '清热定惊，通络，平喘，利尿', group: '平肝' },
+  '僵蚕': { nature: '平', flavor: '辛苦咸', meridians: ['肝','肺'],功效: '息风止痉，祛风止痛，化痰散结', group: '平肝' },
+  '全蝎': { nature: '平', flavor: '辛', meridians: ['肝'],功效: '息风止痉，通络止痛，攻毒散结', group: '平肝' },
+  '蜈蚣': { nature: '温', flavor: '辛', meridians: ['肝'],功效: '息风止痉，通络止痛，攻毒散结', group: '平肝' },
+  '藤梨根': { nature: '凉', flavor: '酸', meridians: ['肝','胃','大肠'],功效: '清热利湿，活血通络，解毒消肿', group: '平肝' },
+  // 活血止血药
+  // 化痰止咳药
+  '半夏': { nature: '温', flavor: '辛', meridians: ['脾','胃','肺'],功效: '燥湿化痰，降逆止呕，消痞散结', group: '化痰' },
+  '桔梗': { nature: '平', flavor: '辛苦', meridians: ['肺'],功效: '宣肺利咽，祛痰排脓', group: '化痰' },
+  '旋覆花': { nature: '温', flavor: '苦辛', meridians: ['肺','脾','胃','大肠'],功效: '降气化痰，降逆止呕', group: '化痰' },
+  '白前': { nature: '微温', flavor: '辛苦', meridians: ['肺'],功效: '降气化痰', group: '化痰' },
+  '芥子': { nature: '温', flavor: '辛', meridians: ['肺'],功效: '温肺化痰，利气散结，通络止痛', group: '化痰' },
+  '紫苏子': { nature: '温', flavor: '辛', meridians: ['肺','大肠'],功效: '降气化痰，止咳平喘，润肠通便', group: '化痰' },
+  '白芥子': { nature: '温', flavor: '辛', meridians: ['肺'],功效: '温肺化痰，利气散结', group: '化痰' },
+  '芦根': { nature: '寒', flavor: '甘', meridians: ['肺','胃'],功效: '清热泻火，生津止渴，除烦止呕，利尿', group: '化痰' },
+  '天花粉': { nature: '微寒', flavor: '甘微苦', meridians: ['肺','胃'],功效: '清热泻火，生津止渴，消肿排脓', group: '化痰' },
+  '竹茹': { nature: '微寒', flavor: '甘', meridians: ['肺','胃','胆'],功效: '清热化痰，除烦止呕', group: '化痰' },
+  '竹沥': { nature: '寒', flavor: '甘', meridians: ['心','肺','肝'],功效: '清热化痰，定惊利窍', group: '化痰' },
+  '瓜蒌': { nature: '寒', flavor: '甘微苦', meridians: ['肺','胃','大肠'],功效: '清热化痰，宽胸散结，润肠通便', group: '化痰' },
+  '川贝母': { nature: '微寒', flavor: '甘苦', meridians: ['肺','心'],功效: '清热化痰，润肺止咳，散结消痈', group: '化痰' },
+  '浙贝母': { nature: '寒', flavor: '苦', meridians: ['肺','心'],功效: '清热化痰，散结消痈', group: '化痰' },
+  '半夏曲': { nature: '温', flavor: '辛', meridians: ['脾','胃','肺'],功效: '燥湿化痰，消食止泻', group: '化痰' },
+  '禹白附': { nature: '温', flavor: '辛苦', meridians: ['肝','胃'],功效: '祛风痰，定惊搐，解毒散结', group: '化痰' },
+  '皂荚': { nature: '温', flavor: '辛', meridians: ['肺','大肠'],功效: '祛痰开窍，散结消肿', group: '化痰' },
+  '款冬花': { nature: '温', flavor: '辛', meridians: ['肺'],功效: '润肺下气，止咳化痰', group: '化痰' },
+  '紫菀': { nature: '温', flavor: '辛苦', meridians: ['肺'],功效: '润肺下气，化痰止咳', group: '化痰' },
+  '百部': { nature: '微温', flavor: '甘苦', meridians: ['肺'],功效: '润肺止咳，杀虫灭虱', group: '化痰' },
+  '马兜铃': { nature: '微寒', flavor: '辛苦', meridians: ['肺','大肠'],功效: '清肺化痰，止咳平喘', group: '化痰' },
+  '枇杷叶': { nature: '微寒', flavor: '苦', meridians: ['肺','胃'],功效: '清肺止咳，降逆止呕', group: '化痰' },
+  '矮地茶': { nature: '平', flavor: '辛苦', meridians: ['肺'],功效: '化痰止咳，清热利湿，活血消肿', group: '化痰' },
+  '洋金花': { nature: '温', flavor: '辛', meridians: ['肺'],功效: '平喘止咳，麻醉止痛', group: '化痰' },
+  '洋菝葜': { nature: '平', flavor: '辛苦', meridians: ['肺','脾'],功效: '祛痰止咳，清热解毒', group: '化痰' },
+  // 补阴药
+  '北沙参': { nature: '微寒', flavor: '甘微苦', meridians: ['肺','胃'],功效: '养阴清肺，益胃生津', group: '补阴' },
+  '南沙参': { nature: '微寒', flavor: '甘微苦', meridians: ['肺','胃'],功效: '养阴清肺，益胃生津，化痰益气', group: '补阴' },
+  '百合': { nature: '微寒', flavor: '甘', meridians: ['肺','心'],功效: '养阴润肺，清心安神', group: '补阴' },
+  '麦冬': { nature: '微寒', flavor: '甘微苦', meridians: ['心','肺','胃'],功效: '养阴润肺，益胃生津，清心除烦', group: '补阴' },
+  '天冬': { nature: '寒', flavor: '甘苦', meridians: ['肺','肾','胃'],功效: '养阴润肺，清火生津', group: '补阴' },
+  '石斛': { nature: '微寒', flavor: '甘', meridians: ['胃','肾'],功效: '益胃生津，滋阴清热', group: '补阴' },
+  '玉竹': { nature: '微寒', flavor: '甘', meridians: ['肺','胃'],功效: '养阴润燥，生津止渴', group: '补阴' },
+  '黑芝麻': { nature: '平', flavor: '甘', meridians: ['肝','肾','大肠'],功效: '补肝肾，益精血，润肠燥', group: '补阴' },
+  '龟甲': { nature: '寒', flavor: '甘咸', meridians: ['肝','肾','心'],功效: '滋阴潜阳，益肾强骨，养血补心', group: '补阴' },
+  '鳖甲': { nature: '微寒', flavor: '咸', meridians: ['肝','肾'],功效: '滋阴潜阳，软坚散结', group: '补阴' },
+  '女贞子': { nature: '凉', flavor: '甘苦', meridians: ['肝','肾'],功效: '滋补肝肾，明目乌发', group: '补阴' },
+  '青果': { nature: '平', flavor: '甘酸', meridians: ['肺','胃'],功效: '清热解毒，利咽生津', group: '补阴' },
+  '金果榄': { nature: '寒', flavor: '苦', meridians: ['肺','大肠'],功效: '清热解毒，利咽止痛', group: '补阴' },
+  // 补气药补
+  '蜂蜜': { nature: '平', flavor: '甘', meridians: ['脾','肺','大肠'],功效: '补中益气，润肠通便，解毒', group: '补气' },
+  '饴糖': { nature: '温', flavor: '甘', meridians: ['脾','胃','肺'],功效: '补中益气，缓急止痛，润肺止咳', group: '补气' },
+};
+
+// ==================== 解析引擎 ====================
+function parseInput(text) {
+  const herbs = [];
+  // Match patterns like: 黄芪 15g, 当归10g, 白术 12克, 人参(15g)
+  const patterns = [
+    /([一-龥]{1,4})\s*(\d+\.?\d*)\s*(g|克|g\.)\s*[,，；;、\s]*/g,
+    /([一-龥]{1,4})\s*\((\d+\.?\d*)\s*(g|克)\)/g,
+  ];
+
+  let matched = {};
+  patterns.forEach(pat => {
+    let m;
+    while ((m = pat.exec(text)) !== null) {
+      const name = m[1].trim();
+      const dose = parseFloat(m[2]);
+      if (HERB_DB[name] && dose > 0) {
+        matched[name] = dose;
+      }
+    }
+  });
+
+  // Also try simple name matching for known herbs
+  Object.keys(HERB_DB).forEach(herbName => {
+    const regex = new RegExp(herbName + '\\s*(\\d+\\.?\\d*)\\s*(g|克)?', 'g');
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      const dose = parseFloat(m[1]) || 10; // default 10g if no dose
+      if (!matched[herbName] || dose > matched[herbName]) {
+        matched[herbName] = dose;
+      }
+    }
+  });
+
+  // Build result
+  for (const [name, dose] of Object.entries(matched)) {
+    herbs.push({ name, dose, ...HERB_DB[name] });
+  }
+
+  // Sort by dose descending (君药在前)
+  herbs.sort((a, b) => b.dose - a.dose);
+  return herbs;
+}
+
+// ==================== 方义生成引擎 ====================
+function generateFormulaAnalysis(herbs) {
+  if (herbs.length === 0) return null;
+
+  // 1. Categorize herbs by group
+  const groups = {};
+  herbs.forEach(h => {
+    if (!groups[h.group]) groups[h.group] = [];
+    groups[h.group].push(h);
+  });
+
+  // 2. Determine dominant therapeutic direction
+  const groupNames = Object.keys(groups);
+  const groupDoses = groupNames.map(g => ({
+    group: g,
+    totalDose: groups[g].reduce((s, h) => s + h.dose, 0),
+    herbs: groups[g]
+  }));
+  groupDoses.sort((a, b) => b.totalDose - a.totalDose);
+
+  const primaryGroup = groupDoses[0];
+  const secondaryGroup = groupDoses[1];
+
+  // 3. Generate formula name
+  const formulaName = generateFormulaName(herbs, primaryGroup, secondaryGroup);
+
+  // 4. Determine overall efficacy
+  const overallEfficacy = generateOverallEfficacy(herbs, primaryGroup, secondaryGroup);
+
+  // 5. Generate 君臣佐使 analysis
+  const junChenZuoShi = generateJunChenZuoShi(herbs, primaryGroup, secondaryGroup);
+
+  // 6. Generate detailed analysis
+  const detailedAnalysis = generateDetailedAnalysis(herbs, groups, primaryGroup, secondaryGroup);
+
+  // 7. Generate overall formula commentary (80-120字)
+  const formulaComment = generateFormulaComment(herbs, primaryGroup, secondaryGroup, junChenZuoShi);
+
+  // 8. Generate warning
+  const warning = generateWarning(herbs);
+
+  return {
+    name: formulaName,
+    efficacy: overallEfficacy,
+    junChenZuoShi,
+    detailed: detailedAnalysis,
+    comment: formulaComment,
+    warning
+  };
+}
+
+function generateFormulaName(herbs, primary, secondary) {
+  const primaryNames = primary.herbs.map(h => h.name);
+  const secondaryNames = secondary ? secondary.herbs.map(h => h.name) : [];
+
+  // Extract key characters
+  const getKey = (name) => {
+    if (name.length >= 2) return name.slice(-1);
+    return name;
+  };
+
+  // Generate name based on groups
+  const groupSuffixes = {
+    '补气': '益气',
+    '补血': '养血',
+    '补阳': '温阳',
+    '补阴': '滋阴',
+    '清热': '清热',
+    '泻下': '泻下',
+    '理气': '行气',
+    '活血': '活血',
+    '解表': '解表',
+    '祛风湿': '祛风',
+    '化湿': '化湿',
+    '利水': '利水',
+    '温里': '温里',
+    '安神': '安神',
+    '开窍': '开窍',
+    '平肝': '平肝',
+    '化痰': '化痰',
+    '收涩': '固涩',
+    '消食': '消食'
+  };
+
+  const suffix = groupSuffixes[primary.group] || '方';
+
+  // Take first character of first two herbs
+  const n1 = getKey(primaryNames[0]);
+  const n2 = secondaryNames.length > 0 ? getKey(secondaryNames[0]) : getKey(primaryNames[1] || primaryNames[0]);
+
+  // Try to make a meaningful name
+  const candidates = [
+    `${n1}${n2}${suffix}`,
+    `${primaryNames[0]}${n2}${suffix}`,
+  ];
+
+  // Prefer 2-character names for elegance
+  if (candidates[0].length > 4) {
+    return candidates[1];
+  }
+  return candidates[0];
+}
+
+function generateOverallEfficacy(herbs, primary, secondary) {
+  const groupActions = {
+    '补气': '补气',
+    '补血': '养血',
+    '补阳': '温阳',
+    '补阴': '滋阴',
+    '清热': '清热',
+    '活血化瘀': '活血化瘀',
+    '活血': '活血行瘀',
+    '理气': '理气',
+    '解表': '解表散邪',
+    '祛风湿': '祛风除湿',
+    '化湿': '化湿和中',
+    '利水': '利水渗湿',
+    '温里': '温里散寒',
+    '安神': '安神定志',
+    '开窍': '开窍醒神',
+    '平肝': '平肝息风',
+    '化痰': '化痰止咳',
+    '收涩': '收敛固涩',
+    '消食': '消食导滞'
+  };
+
+  const actions = [];
+  actions.push(groupActions[primary.group] || primary.group);
+  if (secondary && secondary.group !== primary.group) {
+    actions.push(groupActions[secondary.group] || secondary.group);
+  }
+
+  // Check for specific herb combinations that suggest specific effects
+  const herbNames = herbs.map(h => h.name);
+
+  if (herbNames.includes('黄芪') && herbNames.includes('当归')) {
+    return '补气养血，益气生血';
+  }
+  if (herbNames.includes('人参') && herbNames.includes('麦冬') && herbNames.includes('五味子')) {
+    return '益气养阴，生津敛汗';
+  }
+  if (herbNames.includes('柴胡') && herbNames.includes('白芍')) {
+    return '疏肝解郁，柔肝止痛';
+  }
+  if (herbNames.includes('川芎') && herbNames.includes('桃仁') && herbNames.includes('红花')) {
+    return '活血化瘀，通经止痛';
+  }
+  if (herbNames.includes('附子') && herbNames.includes('干姜')) {
+    return '回阳救逆，温中散寒';
+  }
+  if (herbNames.includes('黄连') && herbNames.includes('黄芩') && herbNames.includes('黄柏')) {
+    return '清热燥湿，泻火解毒';
+  }
+
+  return actions.join('，') + '，调和气血';
+}
+
+function generateJunChenZuoShi(herbs, primary, secondary) {
+  const sorted = [...herbs].sort((a, b) => b.dose - a.dose);
+  const totalDose = sorted.reduce((s, h) => s + h.dose, 0);
+
+  // Jun (君药): 剂量最大，或主要功效的药材
+  const junHerbs = sorted.filter(h => h.dose >= sorted[0].dose * 0.8).slice(0, 2);
+
+  // Chen (臣药): 辅助君药，或次要功效的药材
+  const chenHerbs = sorted.filter(h =>
+    !junHerbs.includes(h) && (h.dose >= sorted[1].dose * 0.6 ||
+    (primary.herbs.includes(h) && !junHerbs.includes(h)))
+  ).slice(0, 2);
+
+  // Zuo (佐药): 佐助佐制
+  const zuoHerbs = sorted.filter(h => !junHerbs.includes(h) && !chenHerbs.includes(h)).slice(0, 2);
+
+  // Shi (使药): 调和
+  const shiHerbs = sorted.filter(h => !junHerbs.includes(h) && !chenHerbs.includes(h) && !zuoHerbs.includes(h));
+
+  return {
+    jun: { herbs: junHerbs, desc: generateJunDesc(junHerbs, primary) },
+    chen: { herbs: chenHerbs, desc: generateChenDesc(chenHerbs, secondary) },
+    zuo: { herbs: zuoHerbs, desc: generateZuoDesc(zuoHerbs) },
+    shi: { herbs: shiHerbs, desc: generateShiDesc(shiHerbs) }
+  };
+}
+
+function generateJunDesc(junHerbs, primaryGroup) {
+  if (junHerbs.length === 0) return '无人参为君';
+  const names = junHerbs.map(h => h.name).join('、');
+  const action = junHerbs.map(h => h.功效.split('，')[0]).join('、');
+  return `${names}为君药，${action}，针对主证起主要治疗作用。`;
+}
+
+function generateChenDesc(chenHerbs, secondaryGroup) {
+  if (chenHerbs.length === 0) return '无臣药。';
+  const names = chenHerbs.map(h => h.name).join('、');
+  if (secondaryGroup) {
+    return `${names}为臣药，${secondaryGroup.herbs[0]?.功效.split('，')[0] || '辅助君药'}，兼治兼证。`;
+  }
+  return `${names}为臣药，辅助君药增强疗效。`;
+}
+
+function generateZuoDesc(zuoHerbs) {
+  if (zuoHerbs.length === 0) return '无佐药。';
+  const names = zuoHerbs.map(h => h.name).join('、');
+  return `${names}为佐药，佐助佐制，调和药性。`;
+}
+
+function generateShiDesc(shiHerbs) {
+  if (shiHerbs.length === 0) return '无使药。';
+  const names = shiHerbs.map(h => h.name).join('、');
+  return `${names}为使药，引经报使，调和诸药。`;
+}
+
+function generateDetailedAnalysis(herbs, groups, primary, secondary) {
+  const analysis = [];
+
+  // Primary group analysis
+  const primaryNames = primary.herbs.map(h => h.name).join('、');
+  const primaryActions = primary.herbs.map(h => h.功效).join('；');
+  analysis.push({
+    title: '主攻方向',
+    content: `${primaryNames}为主，${primaryActions}，针对${getTargetOrgans(primary.herbs)}起到${getPrimaryAction(primary)}作用。`
+  });
+
+  // Secondary group analysis
+  if (secondary && secondary.herbs.length > 0) {
+    const secondaryNames = secondary.herbs.map(h => h.name).join('、');
+    analysis.push({
+      title: '兼顾方向',
+      content: `${secondaryNames}为辅，${secondary.herbs[0]?.功效.split('，')[0]}，标本兼顾。`
+    });
+  }
+
+  // Herb property analysis
+  const natures = {};
+  herbs.forEach(h => { natures[h.nature] = (natures[h.nature] || 0) + 1; });
+  const dominantNature = Object.entries(natures).sort((a, b) => b[1] - a[1])[0];
+
+  // Flavor analysis
+  const flavors = {};
+  herbs.forEach(h => { flavors[h.flavor] = (flavors[h.flavor] || 0) + 1; });
+  const dominantFlavor = Object.entries(flavors).sort((a, b) => b[1] - a[1])[0];
+
+  analysis.push({
+    title: '性味分析',
+    content: `全方性${dominantNature ? dominantNature[0] : '平'}，味${dominantFlavor ? dominantFlavor[0] : '甘'}。${getNatureFlavorAnalysis(natures, flavors)}。`
+  });
+
+  // Meridian tropism
+  const meridians = {};
+  herbs.forEach(h => h.meridians.forEach(m => { meridians[m] = (meridians[m] || 0) + 1; }));
+  const topMeridians = Object.entries(meridians).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  if (topMeridians.length > 0) {
+    analysis.push({
+      title: '归经分析',
+      content: `本方主要归${topMeridians.map(([m]) => m + '经').join('、')}经，${getMeridianAnalysis(topMeridians, herbs)}.`
+    });
+  }
+
+  // Synergy
+  analysis.push({
+    title: '配伍特点',
+    content: generateSynergyText(herbs, groups, primary, secondary)
+  });
+
+  return analysis;
+}
+
+function getTargetOrgans(herbs) {
+  const allMeridians = herbs.flatMap(h => h.meridians);
+  const counts = {};
+  allMeridians.forEach(m => counts[m] = (counts[m] || 0) + 1);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  return top.map(([m]) => m + '经').join('、');
+}
+
+function getPrimaryAction(group) {
+  const actions = {
+    '补气': '补气扶正',
+    '补血': '养血滋阴',
+    '补阳': '温阳散寒',
+    '补阴': '滋阴清热',
+    '清热': '清热泻火',
+    '活血': '活血化瘀',
+    '理气': '理气行滞',
+    '解表': '解表散邪',
+    '祛风湿': '祛风除湿',
+    '化湿': '化湿运脾',
+    '利水': '利水渗湿',
+    '温里': '温里散寒',
+    '安神': '养心安神',
+    '平肝': '平肝息风',
+    '化痰': '化痰止咳'
+  };
+  return actions[group.group] || '调和气血';
+}
+
+function getNatureFlavorAnalysis(natures, flavors) {
+  const parts = [];
+  const dominantNature = Object.entries(natures).sort((a, b) => b[1] - a[1])[0];
+  if (dominantNature[0] === '寒' || dominantNature[0] === '微寒') {
+    parts.push('寒者热之，本方偏寒凉以清热');
+  } else if (dominantNature[0] === '温' || dominantNature[0] === '热') {
+    parts.push('寒者热之，本方偏温热以散寒');
+  } else {
+    parts.push('药性平和，不偏不倚');
+  }
+
+  const dominantFlavor = Object.entries(flavors).sort((a, b) => b[1] - a[1])[0];
+  if (dominantFlavor && dominantFlavor[0].includes('甘')) {
+    parts.push('甘能补能和能缓，以扶正为主');
+  } else if (dominantFlavor && dominantFlavor[0].includes('苦')) {
+    parts.push('苦能泄能燥能坚，以泻实为主');
+  } else if (dominantFlavor && dominantFlavor[0].includes('辛')) {
+    parts.push('辛能散能行，以行散为主');
+  }
+  return parts.join('，');
+}
+
+function getMeridianAnalysis(topMeridians, herbs) {
+  const [m1] = topMeridians;
+  if (m1 === '脾' || m1 === '胃') return '脾胃为后天之本，本方重在调理中焦，固护后天。';
+  if (m1 === '肝' || m1 === '胆') return '肝胆主疏泄，本方重在调畅气机，疏肝利胆。';
+  if (m1 === '肺') return '肺主气司呼吸，本方重在宣降肺气，调理气机。';
+  if (m1 === '肾') return '肾为先天之本，本方重在培补根本，益精填髓。';
+  if (m1 === '心') return '心主血脉神明，本方重在养心安神，调理血脉。';
+  return '本方多经同调，气血兼顾。';
+}
+
+function generateSynergyText(herbs, groups, primary, secondary) {
+  const parts = [];
+  const herbNames = herbs.map(h => h.name);
+
+  // Check for classic pairings
+  const pairings = [
+    [{ a: '黄芪', b: '当归' }, '黄芪配当归，益气生血，气血双补'],
+    [{ a: '人参', b: '黄芪' }, '人参配黄芪，大补元气，益气升阳'],
+    [{ a: '白术', b: '茯苓' }, '白术配茯苓，健脾益气，利水渗湿'],
+    [{ a: '柴胡', b: '白芍' }, '柴胡配白芍，疏肝柔肝，肝脾同调'],
+    [{ a: '川芎', b: '当归' }, '川芎配当归，活血养血，血行气畅'],
+    [{ a: '半夏', b: '陈皮' }, '半夏配陈皮，燥湿化痰，理气和中'],
+    [{ a: '桃仁', b: '红花' }, '桃仁配红花，活血化瘀，通经止痛'],
+    [{ a: '附子', b: '干姜' }, '附子配干姜，回阳救逆，温里散寒'],
+    [{ a: '黄连', b: '黄芩' }, '黄连配黄芩，清热燥湿，泻火解毒'],
+    [{ a: '熟地黄', b: '山茱萸' }, '熟地配山茱萸，滋补肝肾，填精益髓'],
+    [{ a: '麻黄', b: '桂枝' }, '麻黄配桂枝，发汗解表，宣肺平喘'],
+    [{ a: '金银花', b: '连翘' }, '金银花配连翘，清热解毒，疏散风热'],
+    [{ a: '党参', b: '白术' }, '党参配白术，健脾益气，补后天之本'],
+    [{ a: '人参', b: '麦冬' }, '人参配麦冬，益气养阴，生津止渴'],
+    [{ a: '酸枣仁', b: '柏子仁' }, '酸枣仁配柏子仁，养心安神，润肠通便'],
+    [{ a: '天麻', b: '钩藤' }, '天麻配钩藤，平肝息风，清热止痉'],
+    [{ a: '丹参', b: '川芎' }, '丹参配川芎，活血祛瘀，通经止痛'],
+    [{ a: '白术', b: '甘草' }, '白术配甘草，健脾益气，和中缓急'],
+    [{ a: '茯苓', b: '甘草' }, '茯苓配甘草，健脾渗湿，调和诸药'],
+  ];
+
+  pairings.forEach(({ a, b }, desc) => {
+    if (herbNames.includes(a) && herbNames.includes(b)) {
+      parts.push(desc);
+    }
+  });
+
+  // General synergy
+  if (parts.length === 0) {
+    const actions = herbs.slice(0, 3).map(h => h.功效.split('，')[0]);
+    parts.push(`诸药配伍，${actions.join('，')}，共奏${getPrimaryAction(primary)}之效。`);
+  }
+
+  return parts.join('；') + '。';
+}
+
+function generateWarning(herbs) {
+  const herbNames = herbs.map(h => h.name);
+  const warnings = [];
+
+  // Check for toxic herbs
+  const toxicHerbs = ['附子', '川乌', '草乌', '马钱子', '斑蝥', '蟾酥', '巴豆', '天仙子', '洋金花'];
+  const foundToxic = herbNames.filter(n => toxicHerbs.includes(n));
+  if (foundToxic.length > 0) {
+    warnings.push(`含${foundToxic.join('、')}等有毒药材，需谨慎使用，宜在医师指导下应用。`);
+  }
+
+  // Check for strong herbs
+  if (herbNames.includes('大黄') || herbNames.includes('芒硝')) {
+    warnings.push('含泻下药，脾胃虚弱者慎用，中病即止。');
+  }
+  if (herbNames.includes('桃仁') && herbNames.includes('红花')) {
+    warnings.push('活血化瘀力强，孕妇慎用。');
+  }
+
+  return warnings.length > 0 ? warnings.join(' ') : '本方药性平和，建议在中医师辨证指导下使用。';
+}
+
+// ==================== 生成80-120字方义解读 ====================
+function generateFormulaComment(herbs, primary, secondary, jczz) {
+  const herbNames = herbs.map(h => h.name);
+  const sorted = [...herbs].sort((a, b) => b.dose - a.dose);
+  const totalDose = sorted.reduce((s, h) => s + h.dose, 0);
+
+  // 君药信息
+  const junNames = jczz.jun.herbs.map(h => h.name).join('、');
+  const junAction = jczz.jun.herbs.map(h => h.功效.split('，')[0]).join('、');
+
+  // 臣药信息
+  const chenNames = jczz.chen.herbs.map(h => h.name).join('、');
+
+  // 性味分析
+  const natures = {};
+  herbs.forEach(h => { natures[h.nature] = (natures[h.nature] || 0) + 1; });
+  const dominantNature = Object.entries(natures).sort((a, b) => b[1] - a[1])[0];
+  const natureDesc = {
+    '寒': '寒凉清热', '微寒': '微寒清润', '凉': '清凉透散',
+    '温': '温通散寒', '微温': '微温平和', '热': '大热峻补', '平': '性平和中'
+  };
+  const natureText = natureDesc[dominantNature[0]] || '性味平和';
+
+  // 归经分析
+  const meridians = {};
+  herbs.forEach(h => h.meridians.forEach(m => { meridians[m] = (meridians[m] || 0) + 1; }));
+  const topMeridians = Object.entries(meridians).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const meridianText = topMeridians.map(([m]) => m + '经').join('、');
+
+  // 主攻功效
+  const primaryAction = getPrimaryAction(primary);
+
+  // 构建解读文本
+  let parts = [];
+
+  // 开头：君药 + 主治
+  parts.push(`${junNames}为君，${junAction}，直击病本`);
+
+  // 臣药辅助
+  if (chenNames) {
+    parts.push(`${chenNames}为臣，协同增效`);
+  }
+
+  // 性味归经
+  parts.push(`全方${natureText}，归${meridianText}`);
+
+  // 整体功效
+  parts.push(`共奏${primaryAction}之功`);
+
+  // 适用方向
+  const targetOrgans = getTargetOrgans(primary.herbs);
+  parts.push(`偏治${targetOrgans}相关之证`);
+
+  let comment = parts.join('，') + '。';
+
+  // 确保80-120字
+  if (comment.length < 80) {
+    // 补充佐使药说明
+    const zuoNames = jczz.zuo.herbs.map(h => h.name).join('、');
+    const shiNames = jczz.shi.herbs.map(h => h.name).join('、');
+    if (zuoNames) comment += `佐以${zuoNames}调和药性`;
+    if (shiNames) comment += `，使以${shiNames}引经报使`;
+    comment += '，使全方攻补有度，标本兼顾。';
+  }
+
+  if (comment.length > 120) {
+    comment = comment.slice(0, 118) + '。';
+  }
+
+  return comment;
+}
+
+// ==================== UI 交互 ====================
+function analyzeFormula() {
+  const text = document.getElementById('inputText').value.trim();
+  if (!text) {
+    alert('请先输入药材信息');
+    return;
+  }
+
+  const herbs = parseInput(text);
+  if (herbs.length === 0) {
+    alert('未识别到药材，请检查输入格式。\n\n支持格式：黄芪 15g，当归 10g，白术 12克');
+    return;
+  }
+
+  // Render herb list
+  renderHerbList(herbs);
+
+  // Generate analysis
+  const analysis = generateFormulaAnalysis(herbs);
+  if (analysis) {
+    renderResult(analysis);
+  }
+}
+
+function renderHerbList(herbs) {
+  const section = document.getElementById('parsedSection');
+  const list = document.getElementById('herbList');
+
+  const natureClass = { '寒': 'nature-cold', '微寒': 'nature-cold', '凉': 'nature-cold',
+    '温': 'nature-warm', '微温': 'nature-warm', '热': 'nature-hot', '平': 'nature-neutral' };
+
+  list.innerHTML = herbs.map(h => `
+    <div class="herb-item">
+      <div class="herb-name">${h.name}</div>
+      <div class="herb-meta">
+        <span class="herb-dosage">${h.dose}g</span>
+        <span class="herb-nature ${natureClass[h.nature] || 'nature-neutral'}">${h.nature}</span>
+        <span>${h.group}</span>
+      </div>
+    </div>
+  `).join('');
+
+  section.classList.add('show');
+}
+
+function renderResult(analysis) {
+  const section = document.getElementById('resultSection');
+  document.getElementById('formulaName').textContent = analysis.name;
+  document.getElementById('formulaEfficacy').textContent = analysis.efficacy;
+
+  const body = document.getElementById('resultBody');
+  body.innerHTML = '';
+
+  // 方义解读（80-120字综合段）
+  if (analysis.comment) {
+    body.innerHTML += `
+      <div class="result-card" style="border-left-color: var(--brown-light); background: linear-gradient(135deg, rgba(139,105,20,0.04), rgba(139,105,20,0.01));">
+        <div class="result-card-title"><span class="icon" style="background:var(--brown-light)">义</span>方义解读</div>
+        <p style="line-height:2; color:var(--ink); font-size:15px;">${analysis.comment}</p>
+      </div>
+    `;
+  }
+
+  // 君臣佐使
+  const jczz = analysis.junChenZuoShi;
+  let jczzHTML = '<div class="result-card">';
+  jczzHTML += '<div class="result-card-title"><span class="icon">君</span>君药 — 主证所治</div>';
+  jczzHTML += `<p>${jczz.jun.desc}</p></div>`;
+  jczzHTML += '<div class="result-card">';
+  jczzHTML += '<div class="result-card-title"><span class="icon">臣</span>臣药 — 辅助兼治</div>';
+  jczzHTML += `<p>${jczz.chen.desc}</p></div>`;
+  jczzHTML += '<div class="result-card">';
+  jczzHTML += '<div class="result-card-title"><span class="icon">佐</span>佐药 — 佐助佐制</div>';
+  jczzHTML += `<p>${jczz.zuo.desc}</p></div>`;
+  jczzHTML += '<div class="result-card">';
+  jczzHTML += '<div class="result-card-title"><span class="icon">使</span>使药 — 引经调和</div>';
+  jczzHTML += `<p>${jczz.shi.desc}</p></div>`;
+  body.innerHTML += jczzHTML;
+
+  // 详细分析
+  analysis.detailed.forEach(card => {
+    body.innerHTML += `
+      <div class="result-card">
+        <div class="result-card-title">${card.title}</div>
+        <p>${card.content}</p>
+      </div>
+    `;
+  });
+
+  // 提示
+  body.innerHTML += `
+    <div class="result-card" style="border-left-color: #e74c3c;">
+      <div class="result-card-title" style="color:#e74c3c;">⚠ 使用提示</div>
+      <p style="color:#666;">${analysis.warning}</p>
+    </div>
+  `;
+
+  section.classList.add('show');
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearAll() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('parsedSection').classList.remove('show');
+  document.getElementById('resultSection').classList.remove('show');
+}
+
+// Enter 键触发分析
+document.getElementById('inputText').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && e.ctrlKey) {
+    analyzeFormula();
+  }
+});
+</script>
+</body>
+</html>
